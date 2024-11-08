@@ -2,33 +2,38 @@
 import React from 'react';
 import { mount } from 'cypress/react';
 import Quiz from '../../client/src/components/Quiz';
+import questions from '../fixtures/questions.json';
 
 describe('Quiz Component', () => {
-    it('renders the Quiz component', () => {
-        mount(<Quiz />);
-        cy.get('[data-testid="quiz"]').should('exist');
-    });
-
-    it('displays the correct question', () => {
-        const question = "What is the capital of France?";
-        const options = ["Paris", "London", "Berlin", "Madrid"];
-        mount(<Quiz question={question} options={options} />);
-        cy.get('[data-testid="question"]').should('contain', question);
-    });
-
-    it('displays the correct number of options', () => {
-        const question = "What is the capital of France?";
-        const options = ["Paris", "London", "Berlin", "Madrid"];
-        mount(<Quiz question={question} options={options} />);
-        cy.get('[data-testid="option"]').should('have.length', options.length);
-    });
-
-    it('calls the onAnswer callback when an option is clicked', () => {
-        const question = "What is the capital of France?";
-        const options = ["Paris", "London", "Berlin", "Madrid"];
-        const onAnswer = cy.stub();
-        mount(<Quiz question={question} options={options} onAnswer={onAnswer} />);
-        cy.get('[data-testid="option"]').first().click();
-        cy.wrap(onAnswer).should('have.been.calledOnce');
-    });
+    context('Component renders correctly', () => {
+        beforeEach(() => {
+            cy.intercept('GET', '/api/questions/random', (req) => {
+                req.reply(questions);
+            });
+            mount(<Quiz />);
+        }
+        );
+        it('should render the quiz page', () => {
+            cy.contains('Start Quiz').should('be.visible');
+        });
+        it ('should render the first question when the start button is clicked', () => {
+            cy.get('.btn').contains('Start Quiz').click();
+            cy.contains('Question 1').should('be.visible');
+        });
+        it ('should display the next question when an answer is selected', () => {
+            cy.get('.btn').contains('Start Quiz').click();
+            cy.get('input[type="radio"]').first().check();
+            cy.get('.btn').contains('Next').click();
+            cy.contains('Question 2').should('be.visible');
+        });
+        it ('should show the results at the end of the quiz', () => {
+            cy.get('.btn').contains('Start Quiz').click();
+            cy.get('input[type="radio"]').each(($el, index) => {
+                cy.wrap($el).check();
+                cy.get('.btn').contains('Next').click();
+            });
+            cy.contains('Your Score').should('be.visible');
+        });
+    }
+    );
 });
